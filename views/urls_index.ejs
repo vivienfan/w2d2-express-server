@@ -3,19 +3,26 @@
   <head>
     <title>TinyApp</title>
   </head>
-  <body>
-    <header>
+  <body style="margin:70px;">
+    <!--header>
       <% include ./partials/_header %>
-    </header>
-    <ul>
+    </header-->
+    <table>
       <% for (var url in urls) { %>
-        <li>
-          <form action="/urls/<%= url %>/delete" method="POST">
-            <a href="<%= urls[url] %>"><%= urls[url] %></a>   -   <%= url %>
-            <input id="<%= url %>" type="submit" value="Delete">
-          </form>
-        </li>
+          <tr style="height:60px;">
+            <form action="/urls/<%= url %>/delete" method="POST">
+              <td style="width:300px;">
+                <%=url%> &rarr; <a href="<%= urls[url] %>" style="width:300px;"><%=urls[url]%></a>
+              </td>
+              <td style="width:50px;">
+                <a href="/urls/<%=url%>">Edit</a>
+              </td>
+              <td>
+                <button>Delete<img src="https://cdn3.iconfinder.com/data/icons/cleaning-icons/512/Trash_Can-256.png" width="20" height="20"></button>
+              </td>
+            </form>
+          </tr>
       <% } %>
-    </ul>
+    </table>
   </body>
 </html>
