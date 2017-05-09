@@ -3,11 +3,11 @@
   <head>
     <title>TinyApp</title>
   </head>
-  <body style="margin:70px;">
-    <!--header>
+  <body>
+    <header align="right">
       <% include ./partials/_header %>
-    </header-->
-    <table>
+    </header>
+    <table style="margin:50px;">
       <% for (var url in urls) { %>
           <tr style="height:60px;">
             <form action="/urls/<%= url %>/delete" method="POST">

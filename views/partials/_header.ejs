@@ -1,1 +1,12 @@
-Tiny App
+<% if(username) { %>
+  <form action="/logout" method="POST">
+    <%= username %>
+    <input type="submit" value="Logout" style="margin:10px;">
+  </form>
+<% } else { %>
+  <form action="/login" method="POST">
+    <label for="username">Login</label>
+    <input id="username" name="username" type="text" style="width:70px;">
+    <input type="submit" value="Submit">
+  </form>
+<% } %>
