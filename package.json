@@ -1,0 +1,25 @@
+{
+  "name": "express-server",
+  "version": "1.0.0",
+  "description": "To implement a basic web server using Express. This iteration of our web server will use router-level middleware to handle requests.",
+  "main": "express_server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vivienfan/w2d2-express-server.git"
+  },
+  "keywords": [
+    "express"
+  ],
+  "author": "Vivien Fan",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vivienfan/w2d2-express-server/issues"
+  },
+  "homepage": "https://github.com/vivienfan/w2d2-express-server#readme",
+  "dependencies": {
+    "express": "^4.15.2"
+  }
+}
