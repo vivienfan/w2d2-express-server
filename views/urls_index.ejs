@@ -3,16 +3,22 @@
   <head>
     <title>TinyApp-Index</title>
   </head>
-  <body>
+  <body style="margin-left:50px; margin-right:50px;">
     <header align="right">
       <% include ./partials/_header %>
     </header>
-    <table style="margin:50px;">
+    <h1>List of URL's</h1>
+    <form action="/urls/new" method="GET" style="margin:50px;">
+      <input type="submit" value="Add New URL">
+    </form>
+    <table style="margin-left:50px;">
       <% for (var url in urls) { %>
-          <tr style="height:60px;">
+          <tr style="height:30px;">
             <form action="/urls/<%= url %>/delete" method="POST">
-              <td style="width:300px;">
-                <%=url%> &rarr; <a href="<%= urls[url].url %>" style="width:300px;"><%=urls[url].url%></a>
+              <td><%=url%></td>
+              <td>&rarr;</td>
+              <td style="width:250px;">
+                <a href="<%= urls[url].url %>"><%=urls[url].url%></a>
               </td>
               <td style="width:50px;">
                 <a href="/urls/<%=url%>">Edit</a>
