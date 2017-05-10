@@ -9,10 +9,10 @@
     </header>
     <div style="margin:50px;">
       <h1 style="font-size:36px;">
-        ShortURL: <b><%=shortURL%></b>
+        ShortURL: <b><%=shortUrl%></b>
       </h1>
-      <form action="/urls/<%= shortURL %>" method="POST" style="font-size:18px; width:300px;">
-        <input name="newURL" type="text" value="<%=urls[shortURL]%>">
+      <form action="/urls/<%=shortUrl%>" method="POST" style="font-size:18px; width:300px;">
+        <input name="newURL" type="text" value="<%=url%>">
         <input type="submit" value="Update">
       </form>
     </div>

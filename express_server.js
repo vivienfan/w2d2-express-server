@@ -12,8 +12,14 @@ app.use(cookieParser());
 /*-------------------- Global variable --------------------*/
 const PORT = process.env.PORT || 8080; // default port 8080
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "b2xVn2": {
+    url: "http://www.lighthouselabs.ca",
+    userID: "userRandomID"
+  },
+  "9sm5xK": {
+    url: "http://www.google.com",
+    userID: "user2RandomID"
+  }
 };
 const users = {
   "userRandomID": {
@@ -31,11 +37,11 @@ const users = {
 /*-------------------- Helper function --------------------*/
 // This function generates a new random string
 // output: string
-function generateRandomString(length) {
+function generateRandomString() {
   let newString = "";
   const dictionary = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  // generate a random string
-  for (let i = 0; i < length; i++ ) {
+  // generate a 6-character-long random string
+  for (let i = 0; i < 6; i++ ) {
     newString += dictionary.charAt(
       Math.round(Math.random() * dictionary.length));
   }
@@ -45,7 +51,7 @@ function generateRandomString(length) {
 // This function add the new url into database
 // input: string
 // output: string
-function addUrl(longUrl) {
+function addUrl(longUrl, user) {
   let newShortUrl = "";
   // generate a new random short url
   // if it already exists, generate again
@@ -53,7 +59,7 @@ function addUrl(longUrl) {
     newShortUrl = generateRandomString(6);
   } while(urlDatabase[newShortUrl])
   // key is now unique, add the pair into the database
-  urlDatabase[newShortUrl] = longUrl;
+  urlDatabase[newShortUrl] = { url: longUrl, userID: user };
   return newShortUrl;
 }
 
@@ -103,6 +109,18 @@ function findUser(email, password) {
   return "";
 }
 
+// This function returns the subset of the urlDatabase
+// that belongs to the user with id
+function urlsForUser(id) {
+  let subset = {};
+  for (let url in urlDatabase) {
+    if (urlDatabase[url].userID === id) {
+      subset[url] = urlDatabase[url];
+    }
+  }
+  return subset;
+}
+
 /*-------------------- Get request responses --------------------*/
 app.get("/", (req, res) => {
   res.end("Hello!\n");
@@ -112,32 +130,58 @@ app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+// display all urls that is created by the current user
+// if a user is not logged in, redirect to login page
 app.get("/urls", (req, res) => {
-  let templateVars = {
-    urls: urlDatabase,
-    user: users[req.cookies.user_id] ? users[req.cookies.user_id].email : ""
-  };
-  res.render("urls_index", templateVars);
+  let userId = req.cookies.user_id;
+  let urls = urlsForUser(userId);
+  if (!userId || !users[userId]) {
+    res.redirect("/login");
+  } else {
+    let templateVars = {
+      urls: urls,
+      user: users[userId].email
+    };
+    res.render("urls_index", templateVars);
+  }
 });
 
+// to add a new URL
+// if a user is not logged in, redirect to login page
 app.get("/urls/new", (req, res) => {
-  let templateVars = {
-    user: users[req.cookies.user_id] ? users[req.cookies.user_id].email : ""
-  };
-  res.render("urls_new", templateVars);
+  let userId = req.cookies.user_id;
+  if(!userId || !users[userId]) {
+    res.redirect("/login");
+  } else {
+    let templateVars = {
+      user: users[userId].email
+    };
+    res.render("urls_new", templateVars);
+  }
 });
 
+// to show a specific URL, allows user to edit the URL
+// if the user is not logged in, redirect to login page
+// if the user is not the one who created this URL, access forbidden
 app.get("/urls/:id", (req, res) => {
-  let templateVars = {
-    shortURL: req.params.id,
-    urls: urlDatabase,
-    user: users[req.cookies.user_id] ? users[req.cookies.user_id].email : ""
-  };
-  res.render("urls_show", templateVars);
+  let shortUrl = req.params.id;
+  let userId = req.cookies.user_id;
+  if(!userId || !users[userId]) {
+    res.redirect("/login");
+  } else if (urlDatabase[shortUrl].userID !== userId) {
+    res.sendStatus(403);
+  } else {
+    let templateVars = {
+      shortUrl: shortUrl,
+      url: urlDatabase[shortUrl].url,
+      user: users[userId].email
+    };
+    res.render("urls_show", templateVars);
+  }
 });
 
 app.get("/u/:shortURL", (req,res) => {
-  res.redirect(urlDatabase[req.params.shortURL]);
+  res.redirect(urlDatabase[req.params.shortURL].url);
 });
 
 app.get("/hello", (req, res) => {
@@ -153,36 +197,53 @@ app.get("/login", (req, res) => {
 });
 
 /*-------------------- Post request responses --------------------*/
+// to delete a url
+// if the user is not the one who created it, access forbidden
 app.post("/urls/:id/delete", (req, res) => {
-  delete urlDatabase[req.params.id];
-  res.redirect("/urls");
+  if (req.cookies.user_id === urlDatabase[req.params.id].userID) {
+    delete urlDatabase[req.params.id];
+    res.redirect("/urls");
+  } else {
+    res.sendStatus(403);
+  }
 });
 
+// to edit a url
+// if the user is not the one who created it, access forbidden
 app.post("/urls/:id", (req, res) => {
-  urlDatabase[req.params.id] = req.body.newURL;
-  res.redirect("/urls");
+  if (req.cookies.user_id === urlDatabase[req.params.id].userID) {
+    urlDatabase[req.params.id].url = req.body.newURL;
+    res.redirect("/urls");
+  } else {
+    res.sendStatus(403);
+  }
 });
 
+// to redirect to edit url page
 app.post("/urls", (req, res) => {
-  let shortURL = addUrl(req.body.longURL);
+  let shortURL = addUrl(req.body.longURL, req.cookies.user_id);
   res.redirect(`/urls/${shortURL}`);
 });
 
+// to login
+// email, password does not match
 app.post("/login", (req, res) => {
   let userId = findUser(req.body.email, req.body.password);
   if (!userId) {
-    // email, password does not match
     res.sendStatus(403);
   }
   res.cookie("user_id", userId);
   res.redirect("/");
 });
 
+// to logout
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
   res.redirect("/urls");
 });
 
+// to register
+// if the email already registered, bad request
 app.post("/register", (req, res) => {
   if (!req.body.email || !req.body.password) {
     res.sendStatus(400);
