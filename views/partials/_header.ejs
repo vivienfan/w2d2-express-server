@@ -1,12 +1,18 @@
-<% if(username) { %>
+<% if(user) { %>
   <form action="/logout" method="POST">
-    <%= username %>
+    <%= user %>
     <input type="submit" value="Logout" style="margin:10px;">
   </form>
 <% } else { %>
-  <form action="/login" method="POST">
-    <label for="username">Login</label>
-    <input id="username" name="username" type="text" style="width:70px;">
-    <input type="submit" value="Submit">
-  </form>
+  <table>
+    <tr>
+      <td><form action="/login" method="GET">
+        <input type="submit" value="Login">
+      </form></td>
+      <td></td>
+      <td><form action="/register" method="GET">
+        <input type="submit" value="Register">
+      </form></td>
+    </tr>
+  </table>
 <% } %>

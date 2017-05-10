@@ -12,7 +12,7 @@
         ShortURL: <b><%=shortURL%></b>
       </h1>
       <form action="/urls/<%= shortURL %>" method="POST" style="font-size:18px; width:300px;">
-        <input name="newURL" type="text" placeholder="<%=urls[shortURL]%>">
+        <input name="newURL" type="text" value="<%=urls[shortURL]%>">
         <input type="submit" value="Update">
       </form>
     </div>
