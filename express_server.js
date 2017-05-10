@@ -2,6 +2,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
 
 /*-------------------- Enviornment setup --------------------*/
 const app = express();
@@ -77,7 +78,7 @@ function addUser(email, password) {
   users[newUserId] = {
     id: newUserId,
     email: email,
-    password: password
+    password: bcrypt.hashSync(password, 10)
   };
   return newUserId;
 }
@@ -102,7 +103,7 @@ function canRegistered(email) {
 function findUser(email, password) {
   for (let user in users) {
     if (users[user].email === email
-      && users[user].password === password) {
+      && bcrypt.compareSync(password, users[user].password)) {
       return user;
     }
   }
@@ -128,6 +129,10 @@ app.get("/", (req, res) => {
 
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
+});
+
+app.get("/users.json", (req, res) => {
+  res.json(users);
 });
 
 // display all urls that is created by the current user
@@ -226,8 +231,12 @@ app.post("/urls", (req, res) => {
 });
 
 // to login
-// email, password does not match
+// if the email/password is missing, bad request
+// if the email, password does not match, access forbidden
 app.post("/login", (req, res) => {
+  if (!req.body.email || !req.body.password) {
+    res.sendStatus(400);
+  }
   let userId = findUser(req.body.email, req.body.password);
   if (!userId) {
     res.sendStatus(403);
@@ -243,6 +252,7 @@ app.post("/logout", (req, res) => {
 });
 
 // to register
+// if the email/password is missing, bad request
 // if the email already registered, bad request
 app.post("/register", (req, res) => {
   if (!req.body.email || !req.body.password) {
