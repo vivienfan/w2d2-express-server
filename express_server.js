@@ -127,8 +127,15 @@ function urlsForUser(id) {
 }
 
 /*-------------------- Get request responses --------------------*/
+// if the user is logged in, redirect to /urls
+// else redirect to /login
 app.get("/", (req, res) => {
-  res.end("Hello!\n");
+  let userId = req.session.user_id;
+  if (!userId || !users[userId]) {
+    res.redirect("/login");
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 app.get("/urls.json", (req, res) => {
@@ -145,7 +152,7 @@ app.get("/urls", (req, res) => {
   let userId = req.session.user_id;
   let urls = urlsForUser(userId);
   if (!userId || !users[userId]) {
-    res.redirect("/login");
+    res.sendStatus(401);  // Unauthenticated
   } else {
     let templateVars = {
       urls: urls,
@@ -176,9 +183,11 @@ app.get("/urls/:id", (req, res) => {
   let shortUrl = req.params.id;
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
-    res.redirect("/login");
-  } else if (urlDatabase[shortUrl].userID !== userId) {
-    res.sendStatus(403);
+    res.sendStatus(401);  // Unauthorized
+  } else if (!urlDatabase[shortUrl]){
+    res.sendStatus(404);  // Not Found
+  }  else if (urlDatabase[shortUrl].userID !== userId) {
+    res.sendStatus(403);  // Forbidden
   } else {
     let templateVars = {
       shortUrl: shortUrl,
@@ -190,7 +199,12 @@ app.get("/urls/:id", (req, res) => {
 });
 
 app.get("/u/:shortURL", (req,res) => {
-  res.redirect(urlDatabase[req.params.shortURL].url);
+  let shortUrl = req.params.shortURL;
+  if(!urlDatabase[shortUrl]) {
+    res.sendStatus(404);  // Not Found
+  } else {
+    res.redirect(urlDatabase[shortUrl].url);
+  }
 });
 
 app.get("/hello", (req, res) => {
@@ -198,40 +212,68 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  res.render("register", {});
+  let userId = req.session.user_id;
+  if(!userId || !users[userId]) {
+    res.render("register", {});
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 app.get("/login", (req, res) => {
-  res.render("login");
+  let userId = req.session.user_id;
+  if(!userId || !users[userId]) {
+    res.render("login", {});
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 /*-------------------- Post request responses --------------------*/
 // to delete a url
 // if the user is not the one who created it, access forbidden
 app.post("/urls/:id/delete", (req, res) => {
-  if (req.session.user_id === urlDatabase[req.params.id].userID) {
-    delete urlDatabase[req.params.id];
-    res.redirect("/urls");
+  let userId = req.session.user_id;
+  if(!userId || !users[userId]) {
+    res.sendStatus(401);  // Unauthorized
   } else {
-    res.sendStatus(403);
+    let shortUrl = req.params.id;
+    if (!urlDatabase[shortUrl]) {
+      res.sendStatus(400); // Bad Request
+    } else if (req.session.user_id === urlDatabase[shortUrl].userID) {
+      delete urlDatabase[req.params.id];
+      res.redirect("/urls");
+    } else {
+      res.sendStatus(403);  // Forbidden
+    }
   }
 });
 
 // to edit a url
 // if the user is not the one who created it, access forbidden
 app.post("/urls/:id", (req, res) => {
-  if (req.session.user_id === urlDatabase[req.params.id].userID) {
-    urlDatabase[req.params.id].url = req.body.newURL;
-    res.redirect("/urls");
+  let userId = req.session.user_id;
+  if(!userId || !users[userId]) {
+    res.sendStatus(401);  // Unauthorized
   } else {
-    res.sendStatus(403);
+    if (req.session.user_id === urlDatabase[req.params.id].userID) {
+      urlDatabase[req.params.id].url = req.body.newURL;
+      res.redirect("/urls");
+    } else {
+      res.sendStatus(403);  // Forbidden
+    }
   }
 });
 
 // to redirect to edit url page
 app.post("/urls", (req, res) => {
-  let shortURL = addUrl(req.body.longURL, req.session.user_id);
-  res.redirect(`/urls/${shortURL}`);
+  let userId = req.session.user_id;
+  if(!userId || !users[userId]) {
+    res.sendStatus(401);  // Unauthorized
+  } else {
+    let shortURL = addUrl(req.body.longURL, userId);
+    res.redirect(`/urls/${shortURL}`);
+  }
 });
 
 // to login
@@ -239,14 +281,16 @@ app.post("/urls", (req, res) => {
 // if the email, password does not match, access forbidden
 app.post("/login", (req, res) => {
   if (!req.body.email || !req.body.password) {
-    res.sendStatus(400);
+    res.sendStatus(400);  // Bad Request
+  } else {
+    let userId = findUser(req.body.email, req.body.password);
+    if (!userId) {
+      res.sendStatus(403);  // Forbidden
+    } else {
+      req.session.user_id = userId;
+      res.redirect("/urls");
+    }
   }
-  let userId = findUser(req.body.email, req.body.password);
-  if (!userId) {
-    res.sendStatus(403);
-  }
-  req.session.user_id = userId;
-  res.redirect("/");
 });
 
 // to logout
@@ -260,14 +304,15 @@ app.post("/logout", (req, res) => {
 // if the email already registered, bad request
 app.post("/register", (req, res) => {
   if (!req.body.email || !req.body.password) {
-    res.sendStatus(400);
-  }
-  if (canRegistered()) {
-    let userId = addUser(req.body.email, req.body.password);
-    req.session.user_id = userId;
-    res.redirect("/urls");
+    res.sendStatus(400);  // Bad Request
   } else {
-    res.sendStatus(400);
+    if (canRegistered()) {
+      let userId = addUser(req.body.email, req.body.password);
+      req.session.user_id = userId;
+      res.redirect("/urls");
+    } else {
+      res.sendStatus(400);  // Bad Request
+    }
   }
 });
 

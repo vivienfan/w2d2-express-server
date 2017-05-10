@@ -4,15 +4,8 @@
     <input type="submit" value="Logout" style="margin:10px;">
   </form>
 <% } else { %>
-  <table>
-    <tr>
-      <td><form action="/login" method="GET">
-        <input type="submit" value="Login">
-      </form></td>
-      <td></td>
-      <td><form action="/register" method="GET">
-        <input type="submit" value="Register">
-      </form></td>
-    </tr>
-  </table>
+  <nav>
+    <a href="/login">Login</a>
+    <a href="/register">Register</a>
+  </nav>
 <% } %>
