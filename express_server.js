@@ -293,13 +293,20 @@ app.get("/u/:shortURL", (req,res) => {
     // given short URL does not exist
     res.sendStatus(404);
   } else {
-    let visitor_id = req.session ? req.session.visitor_id : "";
-    if (!visitor_id) {
-      // new visitor
-      visitor_id = visitorsDB.addVisitor();
-      req.session.visitor_id = visitor_id
+    let user_id = req.session ? req.session.user_id : "";
+    if (user_id) {
+      // if a user is logged in, use their user_id as the visitor_id
+      urlDB.addVisit(shortUrl, user_id);
+    } else {
+      // if a user is not logged in, check if the server remebers the browser
+      let visitor_id = req.session ? req.session.visitor_id : "";
+      if (!visitor_id) {
+        // generate a new visitor_id for a new browser
+        visitor_id = visitorsDB.addVisitor();
+        req.session.visitor_id = visitor_id
+      }
+      urlDB.addVisit(shortUrl, visitor_id);
     }
-    urlDB.addVisit(shortUrl, visitor_id);
     res.redirect(urlDB.getLongUrl(shortUrl));
   }
 });
