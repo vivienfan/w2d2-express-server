@@ -127,8 +127,9 @@ function urlsForUser(id) {
 }
 
 /*-------------------- Get request responses --------------------*/
-// if the user is logged in, redirect to /urls
-// else redirect to /login
+// Home page
+// user is not logged in -> /login
+// user is logged in -> /urls
 app.get("/", (req, res) => {
   let userId = req.session.user_id;
   if (!userId || !users[userId]) {
@@ -146,13 +147,17 @@ app.get("/users.json", (req, res) => {
   res.json(users);
 });
 
-// display all urls that is created by the current user
-// if a user is not logged in, redirect to login page
+// Display all urls that is created by the current user
+// ------------
+// Change of project specification:
+// Situation:   user is not logged in
+// required:    401
+// implemented: redirect to /login
 app.get("/urls", (req, res) => {
   let userId = req.session.user_id;
   let urls = urlsForUser(userId);
   if (!userId || !users[userId]) {
-    res.sendStatus(401);  // Unauthenticated
+    res.redirect("/login");
   } else {
     let templateVars = {
       urls: urls,
@@ -162,8 +167,8 @@ app.get("/urls", (req, res) => {
   }
 });
 
-// to add a new URL
-// if a user is not logged in, redirect to login page
+// shows page allows user to add a new URL
+// user is not logged in -> /login
 app.get("/urls/new", (req, res) => {
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
@@ -177,17 +182,18 @@ app.get("/urls/new", (req, res) => {
 });
 
 // to show a specific URL, allows user to edit the URL
-// if the user is not logged in, redirect to login page
-// if the user is not the one who created this URL, access forbidden
+// user is not logged in -> unauthorized
+// short URL does not exist -> not found
+// user is not the one who created this URL -> forbidden
 app.get("/urls/:id", (req, res) => {
   let shortUrl = req.params.id;
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
-    res.sendStatus(401);  // Unauthorized
+    res.sendStatus(401);
   } else if (!urlDatabase[shortUrl]){
-    res.sendStatus(404);  // Not Found
+    res.sendStatus(404);
   }  else if (urlDatabase[shortUrl].userID !== userId) {
-    res.sendStatus(403);  // Forbidden
+    res.sendStatus(403);
   } else {
     let templateVars = {
       shortUrl: shortUrl,
@@ -198,10 +204,12 @@ app.get("/urls/:id", (req, res) => {
   }
 });
 
+// redirect user to the external web page
+// short URL does not exitst -> not found
 app.get("/u/:shortURL", (req,res) => {
   let shortUrl = req.params.shortURL;
   if(!urlDatabase[shortUrl]) {
-    res.sendStatus(404);  // Not Found
+    res.sendStatus(404);
   } else {
     res.redirect(urlDatabase[shortUrl].url);
   }
@@ -211,15 +219,19 @@ app.get("/hello", (req, res) => {
   res.end("<html><body>Hello <b>World</b></body></html>\n");
 });
 
+// shows a register page
+// user already logged in -> /urls
 app.get("/register", (req, res) => {
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
-    res.render("register", {});
+    res.render("register", { errMsg: "" });
   } else {
     res.redirect("/urls");
   }
 });
 
+// shows a login page
+// user already logged in -> /urls
 app.get("/login", (req, res) => {
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
@@ -230,62 +242,67 @@ app.get("/login", (req, res) => {
 });
 
 /*-------------------- Post request responses --------------------*/
-// to delete a url
-// if the user is not the one who created it, access forbidden
+// to delete a url from database
+// user is not logged in -> unauthorized
+// short URL does not exist -> bad request
+// user is not the one who created it -> forbidden
 app.post("/urls/:id/delete", (req, res) => {
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
-    res.sendStatus(401);  // Unauthorized
+    res.sendStatus(401);
   } else {
     let shortUrl = req.params.id;
     if (!urlDatabase[shortUrl]) {
-      res.sendStatus(400); // Bad Request
+      res.sendStatus(400);
     } else if (req.session.user_id === urlDatabase[shortUrl].userID) {
       delete urlDatabase[req.params.id];
       res.redirect("/urls");
     } else {
-      res.sendStatus(403);  // Forbidden
+      res.sendStatus(403);
     }
   }
 });
 
-// to edit a url
-// if the user is not the one who created it, access forbidden
+// to edit a url in database
+// user is not logged in -> unauthorized
+// user is not the one who created it -> forbidden
 app.post("/urls/:id", (req, res) => {
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
-    res.sendStatus(401);  // Unauthorized
+    res.sendStatus(401);
   } else {
     if (req.session.user_id === urlDatabase[req.params.id].userID) {
       urlDatabase[req.params.id].url = req.body.newURL;
       res.redirect("/urls");
     } else {
-      res.sendStatus(403);  // Forbidden
+      res.sendStatus(403);
     }
   }
 });
 
-// to redirect to edit url page
+// to add a new url into database
+// and redirect to the specific url details page
+// user is not logged in -> unauthorized
 app.post("/urls", (req, res) => {
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
-    res.sendStatus(401);  // Unauthorized
+    res.sendStatus(401);
   } else {
     let shortURL = addUrl(req.body.longURL, userId);
     res.redirect(`/urls/${shortURL}`);
   }
 });
 
-// to login
-// if the email/password is missing, bad request
-// if the email, password does not match, access forbidden
+// to login, add authentication cookie -> /urls
+// email or/and password is missing -> bad request
+// email/password does not match -> forbidden
 app.post("/login", (req, res) => {
   if (!req.body.email || !req.body.password) {
-    res.sendStatus(400);  // Bad Request
+    res.sendStatus(400);
   } else {
     let userId = findUser(req.body.email, req.body.password);
     if (!userId) {
-      res.sendStatus(403);  // Forbidden
+      res.sendStatus(403);
     } else {
       req.session.user_id = userId;
       res.redirect("/urls");
@@ -293,25 +310,31 @@ app.post("/login", (req, res) => {
   }
 });
 
-// to logout
+// to logout, delete authentication cookie -> /urls
 app.post("/logout", (req, res) => {
   req.session.user_id = null;
   res.redirect("/urls");
 });
 
 // to register
-// if the email/password is missing, bad request
-// if the email already registered, bad request
+// email or/and password is missing -> bad request
+// ------------
+// Change of project specification:
+// Situation:   email is already registered
+// Required:    bad request
+// Implemented: redirect back to /register with an error message
 app.post("/register", (req, res) => {
-  if (!req.body.email || !req.body.password) {
-    res.sendStatus(400);  // Bad Request
+  let email = req.body.email;
+  let password = req.body.password;
+  if (!email || !password) {
+    res.sendStatus(400);
   } else {
-    if (canRegistered()) {
-      let userId = addUser(req.body.email, req.body.password);
+    if (canRegistered(email)) {
+      let userId = addUser(email, password);
       req.session.user_id = userId;
       res.redirect("/urls");
     } else {
-      res.sendStatus(400);  // Bad Request
+      res.render("register", { errMsg: `${email} had already been registered.` });
     }
   }
 });
@@ -319,3 +342,4 @@ app.post("/register", (req, res) => {
 app.listen(PORT, () => {
   console.log(`TinyApp listening on port ${PORT}!`);
 });
+

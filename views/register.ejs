@@ -5,9 +5,7 @@
   </header>
   <body style="margin-left:50px; margin-right:50px;">
     <head>
-      <form action="/login" method="GET">
-        <input type="submit" value="Login">
-      </form>
+      <a href="/login">Login</a>
     </head>
     <h1>Register</h1>
     <form action="/register" method="POST">
@@ -15,10 +13,12 @@
         <tr style="height:60px;">
           <td style="width:100px;"><label for="email">Email:</label></td>
           <td style="width:250px;"><input id="emial" name="email" type="email" style="width:200px;"></td>
+          <td style="color:red;font-size:14px;"><%=errMsg%></td>
         </tr>
         <tr>
           <td><label for="password">Password:</label></td>
           <td><input id="password" name="password" type="password" style="width:200px;"></td>
+          <td></td>
         </tr>
       </table>
       <input type="submit" value="Register" style="margin-left:277px;">
