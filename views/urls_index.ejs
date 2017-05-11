@@ -12,7 +12,7 @@
     <table style="margin:50px;">
       <% for (var url in urls) { %>
           <tr style="height:30px;">
-            <form action="/urls/<%=url%>/delete" method="POST">
+            <form action="/urls/<%=url%>?_method=DELETE" method="POST">
               <td><%=url%></td>
               <td>&rarr;</td>
               <td style="width:250px;">
