@@ -111,12 +111,12 @@ const usersDB = {
     "userRandomID": {
       id: "userRandomID",
       email: "user@example.com",
-      password: "purple-monkey-dinosaur"
+      password: bcrypt.hashSync("purple-monkey-dinosaur", 10)
     },
     "user2RandomID": {
       id: "user2RandomID",
       email: "user2@example.com",
-      password: "dishwasher-funk"
+      password: bcrypt.hashSync("dishwasher-funk", 10)
     }
   },
 
@@ -177,6 +177,9 @@ const usersDB = {
 const visitorsDB = {
   data: [],
 
+  // This function generates a cookie for every new browser
+  // (it recognize a browser as a visitor),
+  // and adds to the data array
   addVisitor: function() {
     let visitor_id = "";
     do {
@@ -253,7 +256,8 @@ app.get("/urls/new", (req, res) => {
     res.redirect("/login");
   } else {
     let templateVars = {
-      user: usersDB.getEmail(userId)
+      user: usersDB.getEmail(userId),
+      errMsg: ""
     };
     res.render("urls_new", templateVars);
   }
@@ -282,7 +286,8 @@ app.get("/urls/:id", (req, res) => {
       user: usersDB.getEmail(userId),
       counter: urlDB.getAccessCount(shortUrl),
       visitors: urlDB.getVisitorCount(shortUrl),
-      trace: urlDB.getTrance(shortUrl)
+      trace: urlDB.getTrance(shortUrl),
+      errMsg: ""
     };
     res.render("urls_show", templateVars);
   }
@@ -375,8 +380,23 @@ app.put("/urls/:id", (req, res) => {
       // user is not the one who created this URL
       res.sendStatus(403);
     } else {
-      urlDB.updataUrl(shortUrl, longUrl);
-      res.redirect("/urls");
+      if (!longUrl){
+        // if long URL is empty
+        let templateVars = {
+          shortUrl: shortUrl,
+          url: "",
+          user: usersDB.getEmail(userId),
+          counter: urlDB.getAccessCount(shortUrl),
+          visitors: urlDB.getVisitorCount(shortUrl),
+          trace: urlDB.getTrance(shortUrl),
+          errMsg: "Please fill in the URL"
+        };
+        res.render("urls_show", templateVars);
+      }
+      else {
+        urlDB.updataUrl(shortUrl, longUrl);
+        res.redirect("/urls");
+      }
     }
   }
 });
@@ -390,8 +410,18 @@ app.post("/urls", (req, res) => {
     // user is not logged in
     res.sendStatus(401);
   } else {
-    let shortURL = urlDB.addUrl(req.body.longURL, userId);
-    res.redirect(`/urls/${shortURL}`);
+    let longUrl = req.body.longURL;
+    if (!longUrl){
+      // if long URL is empty
+      let templateVars = {
+        user: usersDB.getEmail(userId),
+        errMsg: "Please fill in the URL"
+      };
+      res.render("urls_new", templateVars);
+    } else {
+      let shortURL = urlDB.addUrl(longUrl, userId);
+      res.redirect(`/urls/${shortURL}`);
+    }
   }
 });
 
