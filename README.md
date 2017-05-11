@@ -4,8 +4,9 @@ TinyApp is a full stack web application built with Node and Express that allows 
 
 ## Final Product
 
-!["screenshot description"](#)
-!["screenshot description"](#)
+!["List of URLs and their shortened URLs, allows for modification and deletion."](https://github.com/vivienfan/w2d2-tiny-app/blob/master/docs/urls-page.png?raw=true)
+!["Different user has different list of the URLs that they created."](https://github.com/vivienfan/w2d2-tiny-app/blob/master/docs/url-user-b.png?raw=true)
+!["Every URL can be updated, and check on the details of each visit."](https://github.com/vivienfan/w2d2-tiny-app/blob/master/docs/url-show.png?raw=true)
 
 ## Dependencies
 
