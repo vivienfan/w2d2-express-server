@@ -11,7 +11,7 @@
       <h1 style="font-size:36px;">
         ShortURL: <b><%=shortUrl%></b>
       </h1>
-      <form action="/urls/<%=shortUrl%>" method="POST" style="font-size:18px; width:300px;">
+      <form action="/urls/<%=shortUrl%>?_method=PUT" method="POST" style="font-size:18px; width:300px;">
         <input name="newURL" type="text" value="<%=url%>">
         <input type="submit" value="Update">
       </form>

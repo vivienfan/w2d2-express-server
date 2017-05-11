@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
+const methodOverride = require('method-override');
 
 /*-------------------- Enviornment setup --------------------*/
 const app = express();
@@ -13,6 +14,7 @@ app.use(cookieSession({
   keys: ["This-is-my-secrete-key"],
   maxAge: 60 * 60 * 1000 // 1 hour
 }));
+app.use(methodOverride('_method'));
 
 /*-------------------- Global variable --------------------*/
 const PORT = process.env.PORT || 8080; // default port 8080
@@ -246,7 +248,7 @@ app.get("/login", (req, res) => {
 // user is not logged in -> unauthorized
 // short URL does not exist -> bad request
 // user is not the one who created it -> forbidden
-app.post("/urls/:id/delete", (req, res) => {
+app.delete("/urls/:id", (req, res) => {
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
     res.sendStatus(401);
@@ -266,7 +268,7 @@ app.post("/urls/:id/delete", (req, res) => {
 // to edit a url in database
 // user is not logged in -> unauthorized
 // user is not the one who created it -> forbidden
-app.post("/urls/:id", (req, res) => {
+app.put("/urls/:id", (req, res) => {
   let userId = req.session.user_id;
   if(!userId || !users[userId]) {
     res.sendStatus(401);
