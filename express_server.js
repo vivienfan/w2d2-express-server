@@ -12,120 +12,193 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieSession({
   name: "session",
   keys: ["This-is-my-secrete-key"],
-  maxAge: 60 * 60 * 1000 // 1 hour
+  maxAge: 20 * 365 * 24 * 60 * 60 * 1000 // 20 years
 }));
 app.use(methodOverride('_method'));
 
 /*-------------------- Global variable --------------------*/
 const PORT = process.env.PORT || 8080; // default port 8080
-const urlDatabase = {
-  "b2xVn2": {
-    url: "http://www.lighthouselabs.ca",
-    userID: "userRandomID"
+
+const urlDB = {
+  data: {
+    "b2xVn2": {
+      url: "http://www.lighthouselabs.ca",
+      userID: "userRandomID",
+      visitors: [],
+      trace: []
+    },
+    "9sm5xK": {
+      url: "http://www.google.com",
+      userID: "user2RandomID",
+      visitors: [],
+      trace: []
+    }
   },
-  "9sm5xK": {
-    url: "http://www.google.com",
-    userID: "user2RandomID"
+
+  exists: function(shortUrl) {
+    return this.data[shortUrl] ? true : false;
+  },
+
+  getLongUrl: function(shortUrl) {
+    return this.data[shortUrl] ? this.data[shortUrl].url : "";
+  },
+
+  getUserId: function(shortUrl) {
+    return this.data[shortUrl] ? this.data[shortUrl].userID : "";
+  },
+
+  getAccessCount: function(shortUrl) {
+    return this.data[shortUrl] ? this.data[shortUrl].trace.length : 0;
+  },
+
+  getVisitorCount: function(shortUrl) {
+    return this.data[shortUrl] ? this.data[shortUrl].visitors.length : 0;
+  },
+
+  getTrance: function(shortUrl) {
+    return this.data[shortUrl] ? this.data[shortUrl].trace : 0;
+  },
+
+  // This function add the new url into database
+  // input: string
+  // output: string
+  addUrl: function(longUrl, user) {
+    let newShortUrl = "";
+    // generate a new random short url
+    // if it already exists, generate again
+    do {
+      newShortUrl = generateRandomString(6);
+    } while(this.data[newShortUrl])
+    // key is now unique, add the pair into the database
+    this.data[newShortUrl] = { url: longUrl, userID: user, visitors: [], trace: [] };
+    return newShortUrl;
+  },
+
+  addVisit: function(shortUrl, visitor_id) {
+    if (this.data[shortUrl].visitors.indexOf(visitor_id) === -1) {
+      // add the visitor
+      this.data[shortUrl].visitors.push(visitor_id);
+    }
+    // append the timestamp and visitor id into trace
+    this.data[shortUrl].trace.push({timestamp: new Date(), visitor: visitor_id});
+  },
+
+  updataUrl: function(shortUrl, longUrl) {
+    this.data[shortUrl].url = longUrl;
+    this.data[shortUrl].counter = 0;
+    this.data[shortUrl].trace = [];
+  },
+
+  delete: function(shortUrl) {
+    delete this.data[shortUrl];
+  },
+
+  // This function returns the subset of the urlDB
+  // that belongs to the user with id
+  urlsForUser: function(id) {
+    let subset = {};
+    for (let url in this.data) {
+      if (this.data[url].userID === id) {
+        subset[url] = this.data[url];
+      }
+    }
+    return subset;
   }
 };
-const users = {
-  "userRandomID": {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: "purple-monkey-dinosaur"
+
+const usersDB = {
+  data: {
+    "userRandomID": {
+      id: "userRandomID",
+      email: "user@example.com",
+      password: "purple-monkey-dinosaur"
+    },
+    "user2RandomID": {
+      id: "user2RandomID",
+      email: "user2@example.com",
+      password: "dishwasher-funk"
+    }
   },
-  "user2RandomID": {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: "dishwasher-funk"
+
+  exists: function(userId) {
+    return this.data[userId] ? true : false
+  },
+
+  getEmail: function(userId) {
+    return this.data[userId] ? this.data[userId].email : "";
+  },
+
+  // This function add the new user into database
+  // inputs: string, string
+  // output: string
+  addUser: function(email, password) {
+    let newUserId = "";
+    // generate a new random user ID
+    // if it already exists, generate again
+    do {
+      newUserId = generateRandomString(6);
+    } while(this.data[newUserId])
+    // key is now unique, add the pair into the database
+    this.data[newUserId] = {
+      id: newUserId,
+      email: email,
+      password: bcrypt.hashSync(password, 10)
+    };
+    return newUserId;
+  },
+
+  // This function checks if the given email
+  // already exists in the users database
+  // input: string
+  canRegistered: function(email) {
+    for (let user in this.data) {
+      if (this.data[user].email === email) {
+        return false;
+      }
+    }
+    return true;
+  },
+
+  // This function returns the user id that matches
+  // the given email and password
+  // inputs: string, string
+  // output: string
+  findUser: function(email, password) {
+    for (let user in this.data) {
+      if (this.data[user].email === email
+        && bcrypt.compareSync(password, this.data[user].password)) {
+        return user;
+      }
+    }
+    return "";
+  }
+};
+
+const visitorsDB = {
+  data: [],
+
+  addVisitor: function() {
+    let visitor_id = "";
+    do {
+      visitor_id = generateRandomString(15);
+    } while (this.data.indexOf(visitor_id) !== -1)
+    this.data.push(visitor_id);
+    return visitor_id;
   }
 };
 
 /*-------------------- Helper function --------------------*/
 // This function generates a new random string
 // output: string
-function generateRandomString() {
+function generateRandomString(length) {
   let newString = "";
   const dictionary = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  // generate a 6-character-long random string
-  for (let i = 0; i < 6; i++ ) {
+  // generate a random string with the specified length
+  for (let i = 0; i < length; i++ ) {
     newString += dictionary.charAt(
       Math.round(Math.random() * dictionary.length));
   }
   return newString;
-}
-
-// This function add the new url into database
-// input: string
-// output: string
-function addUrl(longUrl, user) {
-  let newShortUrl = "";
-  // generate a new random short url
-  // if it already exists, generate again
-  do {
-    newShortUrl = generateRandomString(6);
-  } while(urlDatabase[newShortUrl])
-  // key is now unique, add the pair into the database
-  urlDatabase[newShortUrl] = { url: longUrl, userID: user };
-  return newShortUrl;
-}
-
-// This function add the new user into database
-// inputs: string, string
-// output: string
-function addUser(email, password) {
-  let newUserId = "";
-  // generate a new random user ID
-  // if it already exists, generate again
-  do {
-    newUserId = generateRandomString(6);
-  } while(users[newUserId])
-  // key is now unique, add the pair into the database
-  users[newUserId] = {
-    id: newUserId,
-    email: email,
-    password: bcrypt.hashSync(password, 10)
-  };
-  return newUserId;
-}
-
-// This function checks if the given email
-// already exists in the users database
-// input: string
-function canRegistered(email) {
-  let flag = true;
-  for (let user in users) {
-    if (users[user].email === email) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// This function returns the user id that matches
-// the given email and password
-// inputs: string, string
-// output: string
-function findUser(email, password) {
-  for (let user in users) {
-    if (users[user].email === email
-      && bcrypt.compareSync(password, users[user].password)) {
-      return user;
-    }
-  }
-  return "";
-}
-
-// This function returns the subset of the urlDatabase
-// that belongs to the user with id
-function urlsForUser(id) {
-  let subset = {};
-  for (let url in urlDatabase) {
-    if (urlDatabase[url].userID === id) {
-      subset[url] = urlDatabase[url];
-    }
-  }
-  return subset;
 }
 
 /*-------------------- Get request responses --------------------*/
@@ -134,7 +207,8 @@ function urlsForUser(id) {
 // user is logged in -> /urls
 app.get("/", (req, res) => {
   let userId = req.session.user_id;
-  if (!userId || !users[userId]) {
+  if (!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.redirect("/login");
   } else {
     res.redirect("/urls");
@@ -142,11 +216,11 @@ app.get("/", (req, res) => {
 });
 
 app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
+  res.json(urlDB.data);
 });
 
 app.get("/users.json", (req, res) => {
-  res.json(users);
+  res.json(usersDB.data);
 });
 
 // Display all urls that is created by the current user
@@ -157,13 +231,14 @@ app.get("/users.json", (req, res) => {
 // implemented: redirect to /login
 app.get("/urls", (req, res) => {
   let userId = req.session.user_id;
-  let urls = urlsForUser(userId);
-  if (!userId || !users[userId]) {
+  let urls = urlDB.urlsForUser(userId);
+  if (!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.redirect("/login");
   } else {
     let templateVars = {
       urls: urls,
-      user: users[userId].email
+      user: usersDB.getEmail(userId)
     };
     res.render("urls_index", templateVars);
   }
@@ -173,11 +248,12 @@ app.get("/urls", (req, res) => {
 // user is not logged in -> /login
 app.get("/urls/new", (req, res) => {
   let userId = req.session.user_id;
-  if(!userId || !users[userId]) {
+  if(!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.redirect("/login");
   } else {
     let templateVars = {
-      user: users[userId].email
+      user: usersDB.getEmail(userId)
     };
     res.render("urls_new", templateVars);
   }
@@ -190,17 +266,23 @@ app.get("/urls/new", (req, res) => {
 app.get("/urls/:id", (req, res) => {
   let shortUrl = req.params.id;
   let userId = req.session.user_id;
-  if(!userId || !users[userId]) {
+  if(!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.sendStatus(401);
-  } else if (!urlDatabase[shortUrl]){
+  } else if (!urlDB.exists(shortUrl)){
+    // given short URL does not exist
     res.sendStatus(404);
-  }  else if (urlDatabase[shortUrl].userID !== userId) {
+  }  else if (userId !== urlDB.getUserId(shortUrl)) {
+    // user is not the one who created this URL
     res.sendStatus(403);
   } else {
     let templateVars = {
       shortUrl: shortUrl,
-      url: urlDatabase[shortUrl].url,
-      user: users[userId].email
+      url: urlDB.getLongUrl(shortUrl),
+      user: usersDB.getEmail(userId),
+      counter: urlDB.getAccessCount(shortUrl),
+      visitors: urlDB.getVisitorCount(shortUrl),
+      trace: urlDB.getTrance(shortUrl)
     };
     res.render("urls_show", templateVars);
   }
@@ -210,10 +292,18 @@ app.get("/urls/:id", (req, res) => {
 // short URL does not exitst -> not found
 app.get("/u/:shortURL", (req,res) => {
   let shortUrl = req.params.shortURL;
-  if(!urlDatabase[shortUrl]) {
+  if(!urlDB.exists(shortUrl)) {
+    // given short URL does not exist
     res.sendStatus(404);
   } else {
-    res.redirect(urlDatabase[shortUrl].url);
+    let visitor_id = req.session ? req.session.visitor_id : "";
+    if (!visitor_id) {
+      // new visitor
+      visitor_id = visitorsDB.addVisitor();
+      req.session.visitor_id = visitor_id
+    }
+    urlDB.addVisit(shortUrl, visitor_id);
+    res.redirect(urlDB.getLongUrl(shortUrl));
   }
 });
 
@@ -225,7 +315,8 @@ app.get("/hello", (req, res) => {
 // user already logged in -> /urls
 app.get("/register", (req, res) => {
   let userId = req.session.user_id;
-  if(!userId || !users[userId]) {
+  if(!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.render("register", { errMsg: "" });
   } else {
     res.redirect("/urls");
@@ -236,7 +327,8 @@ app.get("/register", (req, res) => {
 // user already logged in -> /urls
 app.get("/login", (req, res) => {
   let userId = req.session.user_id;
-  if(!userId || !users[userId]) {
+  if(!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.render("login", {});
   } else {
     res.redirect("/urls");
@@ -250,17 +342,20 @@ app.get("/login", (req, res) => {
 // user is not the one who created it -> forbidden
 app.delete("/urls/:id", (req, res) => {
   let userId = req.session.user_id;
-  if(!userId || !users[userId]) {
+  if(!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.sendStatus(401);
   } else {
     let shortUrl = req.params.id;
-    if (!urlDatabase[shortUrl]) {
+    if (!urlDB.exists(shortUrl)) {
+      // given short URL does not exist
       res.sendStatus(400);
-    } else if (req.session.user_id === urlDatabase[shortUrl].userID) {
-      delete urlDatabase[req.params.id];
-      res.redirect("/urls");
-    } else {
+    } else if (req.session.user_id !== urlDB.getUserId(shortUrl)){
+      // user is not the one who created this URL
       res.sendStatus(403);
+    } else {
+      urlDB.delete(shortUrl);
+      res.redirect("/urls");
     }
   }
 });
@@ -270,14 +365,18 @@ app.delete("/urls/:id", (req, res) => {
 // user is not the one who created it -> forbidden
 app.put("/urls/:id", (req, res) => {
   let userId = req.session.user_id;
-  if(!userId || !users[userId]) {
+  let shortUrl = req.params.id;
+  let longUrl = req.body.newURL;
+  if(!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.sendStatus(401);
   } else {
-    if (req.session.user_id === urlDatabase[req.params.id].userID) {
-      urlDatabase[req.params.id].url = req.body.newURL;
-      res.redirect("/urls");
-    } else {
+    if (req.session.user_id !== urlDB.getUserId(shortUrl)) {
+      // user is not the one who created this URL
       res.sendStatus(403);
+    } else {
+      urlDB.updataUrl(shortUrl, longUrl);
+      res.redirect("/urls");
     }
   }
 });
@@ -287,10 +386,11 @@ app.put("/urls/:id", (req, res) => {
 // user is not logged in -> unauthorized
 app.post("/urls", (req, res) => {
   let userId = req.session.user_id;
-  if(!userId || !users[userId]) {
+  if(!userId || !usersDB.exists(userId)) {
+    // user is not logged in
     res.sendStatus(401);
   } else {
-    let shortURL = addUrl(req.body.longURL, userId);
+    let shortURL = urlDB.addUrl(req.body.longURL, userId);
     res.redirect(`/urls/${shortURL}`);
   }
 });
@@ -300,10 +400,12 @@ app.post("/urls", (req, res) => {
 // email/password does not match -> forbidden
 app.post("/login", (req, res) => {
   if (!req.body.email || !req.body.password) {
+    // email or/and password is missing
     res.sendStatus(400);
   } else {
-    let userId = findUser(req.body.email, req.body.password);
+    let userId = usersDB.findUser(req.body.email, req.body.password);
     if (!userId) {
+      // email/password does not match
       res.sendStatus(403);
     } else {
       req.session.user_id = userId;
@@ -331,8 +433,8 @@ app.post("/register", (req, res) => {
   if (!email || !password) {
     res.sendStatus(400);
   } else {
-    if (canRegistered(email)) {
-      let userId = addUser(email, password);
+    if (usersDB.canRegistered(email)) {
+      let userId = usersDB.addUser(email, password);
       req.session.user_id = userId;
       res.redirect("/urls");
     } else {
